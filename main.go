@@ -12,10 +12,6 @@ import (
 	"golang.org/x/term"
 )
 
-type Methods interface {
-	SetPlayerPosition(board *Board)
-}
-
 type Player struct {
 	X          int
 	Y          int
@@ -73,6 +69,9 @@ func main() {
 	PingPong := Game{
 		GameDuration: 10,
 		GameCommands: &GameControls,
+		PlayerOne:    &Player{},
+		PlayerTwo:    &Player{},
+		GameBoard:    &Board{},
 	}
 
 	//Clear screen for game
@@ -82,6 +81,7 @@ func main() {
 	//Build Game Board onto screen
 	PingPong.CreateBoard(20, 120)
 	PingPong.VolleyStart()
+
 	PingPong.PlayerOne.Score = 0
 	PingPong.PlayerTwo.Score = 0
 
@@ -90,9 +90,11 @@ func main() {
 	//when the done chan receives a value it will exit the routines
 	doneChan := make(chan bool, 1)
 	PingPong.GameTimer(doneChan)
+	inputChan := make(chan string)
+	go ReadSingleKey(inputChan)
 
 	//need a go routine which waits for key strokes in the background
-	inputChan := make(chan string)
+
 	for {
 		select {
 		case done := <-doneChan:
@@ -103,15 +105,11 @@ func main() {
 			} else {
 				log.Fatalf("USER ENDED GAME")
 			}
-		default:
-			go func() {
-				ReadSingleKey(inputChan) //running in the background to receiving inputs
-			}()
-			// PingPong.BallStopChan = make(chan struct{})
-			PingPong.BallMovement(1)
-			input := <-inputChan
+		case input := <-inputChan:
 			PingPong.MovePlayer(input)
-			PingPong.ScreenWriter() //used to write current standings and erase old ones
+			PingPong.ScreenWriter()
+			PingPong.ScreenWriter()
+			//used to write current standings and erase old ones
 		}
 	}
 
@@ -135,16 +133,10 @@ func (g *Game) PlayerTwoHitBall() bool {
 	return g.PlayerTwo.X == g.GameBall.X && g.PlayerTwo.Y == g.GameBall.Y
 }
 
-func (g *Game) PlayerTwoScores() bool {
-	return g.GameBall.X == g.GameBoard.Width-2
-}
-
 func (p *Player) GivePlayerPoint() {
+	p.PlayerLock.Lock()
+	defer p.PlayerLock.Unlock()
 	p.Score += 1
-}
-
-func (g *Game) PlayerOneScores() bool {
-	return g.GameBall.X == 1
 }
 
 func (g *Game) PlayerOneHitBall() bool {
@@ -153,9 +145,6 @@ func (g *Game) PlayerOneHitBall() bool {
 
 func (g *Game) BallMovement(direction int) {
 	go func() {
-		g.GameBall.BallLock.Lock()
-		defer g.GameBall.BallLock.Unlock()
-
 		for {
 			select {
 			case <-g.BallStopChan:
@@ -169,18 +158,14 @@ func (g *Game) BallMovement(direction int) {
 
 			// Check if someone scores
 			if newX <= 0 {
-				g.StopOnce.Do(func() {
-					close(g.BallStopChan)
-				})
+				g.StopOnce.Do(func() { close(g.BallStopChan) })
 				g.PlayerTwo.GivePlayerPoint()
 				g.ResetBoard()
 				g.VolleyStart()
 				return
 			}
 			if newX >= g.GameBoard.Width-1 {
-				g.StopOnce.Do(func() {
-					close(g.BallStopChan)
-				})
+				g.StopOnce.Do(func() { close(g.BallStopChan) })
 				g.PlayerOne.GivePlayerPoint()
 				g.ResetBoard()
 				g.VolleyStart()
@@ -189,12 +174,10 @@ func (g *Game) BallMovement(direction int) {
 
 			// Check if hit by player
 			if direction > 0 && g.PlayerTwoHitBall() {
-				g.BallMovement(-1)
-				return
+				direction = -1
 			}
 			if direction < 0 && g.PlayerOneHitBall() {
-				g.BallMovement(1)
-				return
+				direction = 1
 			}
 
 			time.Sleep(10 * time.Millisecond)
@@ -209,7 +192,9 @@ func (g *Game) BallMovement(direction int) {
 			g.GameBoard.BoardLock.Unlock()
 
 			// Update position
+			g.GameBall.BallLock.Lock()
 			g.GameBall.Y, g.GameBall.X = newY, newX
+			g.GameBall.BallLock.Unlock()
 		}
 	}()
 }
@@ -225,6 +210,7 @@ func (g *Game) ScreenWriter() {
 func (g *Game) VolleyStart() {
 	g.SetPlayerStart()
 	g.SetPingPongBall()
+	g.BallMovement(1)
 	g.PrintCurrentGamePositions()
 	g.BallStopChan = make(chan struct{})
 	g.StopOnce = sync.Once{}
@@ -234,22 +220,21 @@ func (g *Game) VolleyStart() {
 // player methods
 func (g *Game) SetPlayerStart() {
 	g.GameBoard.BoardLock.Lock()
+	g.PlayerOne.PlayerLock.Lock()
+	g.PlayerTwo.PlayerLock.Lock()
 	defer g.GameBoard.BoardLock.Unlock()
+	defer g.PlayerOne.PlayerLock.Unlock()
+	defer g.PlayerTwo.PlayerLock.Unlock()
+
 	//left player
-	player1 := Player{
-		X: 1, //needs to stay within the border at 0
-		Y: g.GameBoard.Height / 2,
-	}
-	g.PlayerOne = &player1
+	g.PlayerOne.X = 1
+	g.PlayerOne.Y = g.GameBoard.Height / 2
 	//right player
-	player2 := Player{
-		X: g.GameBoard.Width - 2, //needs to stay within the border at width -1
-		Y: g.GameBoard.Height / 2,
-	}
-	g.PlayerTwo = &player2
+	g.PlayerTwo.X = g.GameBoard.Width - 2
+	g.PlayerTwo.Y = g.GameBoard.Height / 2
 	//place the players onto the Board
-	g.GameBoard.Layout[player1.Y][player1.X] = "X"
-	g.GameBoard.Layout[player2.Y][player2.X] = "X"
+	g.GameBoard.Layout[g.PlayerOne.Y][g.PlayerOne.X] = "X"
+	g.GameBoard.Layout[g.PlayerTwo.Y][g.PlayerTwo.X] = "X"
 	//return the players
 
 }
@@ -266,7 +251,10 @@ func (g *Game) SetPingPongBall() {
 
 // Move player
 func (g *Game) MovePlayer(input string) {
-
+	g.PlayerOne.PlayerLock.Lock()
+	g.PlayerTwo.PlayerLock.Lock()
+	defer g.PlayerOne.PlayerLock.Unlock()
+	defer g.PlayerTwo.PlayerLock.Unlock()
 	switch input {
 	case "s":
 		if g.PlayerOne.Y < g.GameBoard.Height-2 { //move player one down if not at border
@@ -332,7 +320,6 @@ func (g *Game) MovePlayer(input string) {
 }
 
 func (g *Game) ResetBoard() {
-	g.GameBoard.Layout = [][]string{}
 	g.ClearTerminal()
 	g.CreateBoard(g.GameBoard.Height, g.GameBoard.Width)
 }
@@ -340,29 +327,29 @@ func (g *Game) ResetBoard() {
 // board methods
 // Build Game Board Builds out the game in strings using height and width
 func (g *Game) CreateBoard(height, width int) {
-	layout := make([][]string, height)
+	if g.GameBoard.Layout == nil || len(g.GameBoard.Layout) != height {
+		g.GameBoard.Layout = make([][]string, height)
+	}
+
 	for y := 0; y < height; y++ {
-		row := make([]string, width)
+		if g.GameBoard.Layout[y] == nil || len(g.GameBoard.Layout[y]) != width {
+			g.GameBoard.Layout[y] = make([]string, width)
+		}
+
 		for x := 0; x < width; x++ {
-			if x == 0 { // left border
-				row[x] = "|"
-			} else if x == width-1 { // right border
-				row[x] = "|"
-			} else if y == 0 {
-				row[x] = "-"
-			} else if y == height-1 {
-				row[x] = "-"
+			if x == 0 || x == width-1 {
+				g.GameBoard.Layout[y][x] = "|"
+			} else if y == 0 || y == height-1 {
+				g.GameBoard.Layout[y][x] = "-"
 			} else {
-				row[x] = " " //single game space
+				g.GameBoard.Layout[y][x] = " "
 			}
 		}
-		layout[y] = row
 	}
-	g.GameBoard = &Board{
-		Width:  width,
-		Height: height,
-		Layout: layout,
-	}
+
+	// Update dimensions (optional if they might change)
+	g.GameBoard.Width = width
+	g.GameBoard.Height = height
 }
 
 // Prints the current board
@@ -389,6 +376,9 @@ func ReadSingleKey(inputChan chan string) {
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
 	var b []byte = make([]byte, 1)
-	os.Stdin.Read(b)
-	inputChan <- string(b[0])
+	for {
+		if _, err := os.Stdin.Read(b); err == nil {
+			inputChan <- string(b[0])
+		}
+	}
 }
