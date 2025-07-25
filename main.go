@@ -67,7 +67,7 @@ func main() {
 
 	//Declare the game
 	PingPong := Game{
-		GameDuration: 10,
+		GameDuration: 20,
 		GameCommands: &GameControls,
 		PlayerOne:    &Player{},
 		PlayerTwo:    &Player{},
@@ -108,7 +108,6 @@ func main() {
 		case input := <-inputChan:
 			PingPong.MovePlayer(input)
 			PingPong.ScreenWriter()
-			PingPong.ScreenWriter()
 			//used to write current standings and erase old ones
 		}
 	}
@@ -145,26 +144,32 @@ func (g *Game) PlayerOneHitBall() bool {
 
 func (g *Game) BallMovement(direction int) {
 	go func() {
+		line := RandomLineGenerator()
+		count := 0
 		for {
 			select {
 			case <-g.BallStopChan:
 				return
 			default:
 			}
-
+			count++
 			// Predict new position
-			newX := g.GameBall.X + direction
+			newX := g.GameBall.X + direction // if y = 1/3 every 3 x means 1 y up
 			newY := g.GameBall.Y
+			if count == line {
+				count = 0 //reset
+				newY += 1 // move ball
+			}
 
 			// Check if someone scores
-			if newX <= 0 {
+			if newX <= -1 {
 				g.StopOnce.Do(func() { close(g.BallStopChan) })
 				g.PlayerTwo.GivePlayerPoint()
 				g.ResetBoard()
 				g.VolleyStart()
 				return
 			}
-			if newX >= g.GameBoard.Width-1 {
+			if newX >= g.GameBoard.Width {
 				g.StopOnce.Do(func() { close(g.BallStopChan) })
 				g.PlayerOne.GivePlayerPoint()
 				g.ResetBoard()
@@ -187,8 +192,9 @@ func (g *Game) BallMovement(direction int) {
 
 			// Move ball
 			g.GameBoard.BoardLock.Lock()
+			spaceState := g.SaveOldSpaceState(newY, newX)
 			g.GameBoard.Layout[newY][newX] = g.GameBoard.Layout[oldY][oldX]
-			g.GameBoard.Layout[oldY][oldX] = " "
+			g.GameBoard.Layout[oldY][oldX] = spaceState
 			g.GameBoard.BoardLock.Unlock()
 
 			// Update position
@@ -197,6 +203,18 @@ func (g *Game) BallMovement(direction int) {
 			g.GameBall.BallLock.Unlock()
 		}
 	}()
+}
+
+// the problem you must solve is that y must always be less than the height
+// and y must always be greater than 0
+// the equation for a line is y = Mx + B
+// based on current y it must not go outside that range at ending y
+func RandomLineGenerator() int {
+	return 20
+}
+
+func (g *Game) SaveOldSpaceState(y, x int) string {
+	return g.GameBoard.Layout[y][x]
 }
 
 // writes the current game board to the screen
@@ -211,7 +229,6 @@ func (g *Game) VolleyStart() {
 	g.SetPlayerStart()
 	g.SetPingPongBall()
 	g.BallMovement(1)
-	g.PrintCurrentGamePositions()
 	g.BallStopChan = make(chan struct{})
 	g.StopOnce = sync.Once{}
 
