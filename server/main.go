@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -144,7 +145,7 @@ func (g *Game) PlayerOneHitBall() bool {
 
 func (g *Game) BallMovement(direction int) {
 	go func() {
-		line := RandomLineGenerator()
+		slopeCalc := g.RandomLineGenerator()
 		count := 0
 		for {
 			select {
@@ -156,9 +157,9 @@ func (g *Game) BallMovement(direction int) {
 			// Predict new position
 			newX := g.GameBall.X + direction // if y = 1/3 every 3 x means 1 y up
 			newY := g.GameBall.Y
-			if count == line {
+			if count == slopeCalc {
 				count = 0 //reset
-				newY += 1 // move ball
+				newY += 1 // move ball up one
 			}
 
 			// Check if someone scores
@@ -209,9 +210,26 @@ func (g *Game) BallMovement(direction int) {
 // and y must always be greater than 0
 // the equation for a line is y = Mx + B
 // based on current y it must not go outside that range at ending y
-func RandomLineGenerator() int {
-	return 20
-}
+func (g *Game) RandomLineGenerator() int {
+	//a number negative for up and a number positive for down and the range
+	//must keep it within the boundaries
+	spacesAboveLeft := g.GameBall.Y - g.GameBoard.Height //the out come must not move up more than this
+	spacesBelowLeft := g.GameBoard.Height - g.GameBall.Y //the out come must not move below this
+	//those are the ys in the slope equation
+	//the returned number is how many spaces
+	var possibleEndPoints []int
+	// upDownDirector := rand.Intn(2)
+
+	for endPoint := spacesAboveLeft; endPoint < spacesBelowLeft; endPoint++ {
+		possibleEndPoints = append(possibleEndPoints, endPoint)
+	}
+
+	b := rand.Intn(len(possibleEndPoints))
+
+	return b
+} //y = mx+b
+
+// func (g *Game) SpacesBelow() []int{}
 
 func (g *Game) SaveOldSpaceState(y, x int) string {
 	return g.GameBoard.Layout[y][x]
