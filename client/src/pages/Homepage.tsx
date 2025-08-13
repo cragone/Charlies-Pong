@@ -21,7 +21,6 @@ const Homepage = () => {
             Software Engineer • Go & React Dev
           </p>
         </div>
-
         {/* Resume Card */}
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
@@ -51,14 +50,12 @@ const Homepage = () => {
             </div>
           </div>
         </div>
-
         {/* Portfolio */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Projects</h2>
           <div className="grid gap-4 md:grid-cols-2">Play Pomg Here</div>
         </div>
-
-        {/* Footer */}
+        \{/* Footer */}
         <footer className="mt-12 text-center text-sm text-gray-500">
           Built with ❤️ using Vite, React, TailwindCSS & DaisyUI
         </footer>
