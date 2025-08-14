@@ -25,26 +25,58 @@ func (g *Game) PlayerOneHitBall() bool {
 	return g.PlayerOne.X == g.GameBall.X && g.PlayerOne.Y == g.GameBall.Y
 }
 
+func BallMovementOnYAxis(randomEndingY int) int {
+	if randomEndingY < 0 {
+		return Up
+	}
+	return Down
+}
+
 func (g *Game) BallMovement(direction int) {
 	go func() {
-		slopeCalc := g.RandomLineGenerator()
-		count := 0
+		// N = how many X steps before we move Y by dy (±1)
+		N := g.RandomEndingYGenerator()
+		if N == 0 {
+			N = 1
+		}
+		if N < 0 {
+			N = -N
+		}
+
+		dy := BallMovementOnYAxis(N) // must be either +1 or -1
+		steps := 0
+		dir := direction // local copy so we can flip safely
+
 		for {
 			select {
 			case <-g.BallStopChan:
 				return
 			default:
 			}
-			count++
+
+			steps++
+
 			// Predict new position
-			newX := g.GameBall.X + direction // if y = 1/3 every 3 x means 1 y up
+			newX := g.GameBall.X + dir
 			newY := g.GameBall.Y
-			if count == slopeCalc {
-				count = 0 //reset
-				newY += 1 // move ball up one
+
+			// Move vertically every N x-steps
+			if steps >= N {
+				steps = 0
+				newY += dy
 			}
 
-			// Check if someone scores
+			// Reflect off top/bottom and keep Y in-bounds
+			boardH := g.GameBoard.Height
+			if newY < 0 {
+				newY = 0
+				dy = +1 // bounce downward
+			} else if newY >= boardH {
+				newY = boardH - 1
+				dy = -1 // bounce upward
+			}
+
+			// Check if someone scores (left/right walls)
 			if newX <= -1 {
 				g.StopOnce.Do(func() { close(g.BallStopChan) })
 				g.PlayerTwo.GivePlayerPoint()
@@ -60,21 +92,27 @@ func (g *Game) BallMovement(direction int) {
 				return
 			}
 
-			// Check if hit by player
-			if direction > 0 && g.PlayerTwoHitBall() {
-				direction = -1
+			// Paddle collisions flip horizontal direction.
+			// (If you also want to change slope on paddle hit, regenerate N/dy here)
+			if dir == Right && g.PlayerTwoHitBall() {
+				dir = Left
+				// Optional: change vertical cadence/slope on hit:
+				// N = max(1, abs(g.RandomEndingYGenerator()))
+				// dy = BallMovementOnYAxis(N)
 			}
-			if direction < 0 && g.PlayerOneHitBall() {
-				direction = 1
+			if dir == Left && g.PlayerOneHitBall() {
+				dir = Right
+				// Optional: change slope here too (see above).
 			}
 
 			time.Sleep(10 * time.Millisecond)
 			g.ScreenWriter()
 
+			// Commit move (guard indices!)
+			g.GameBoard.BoardLock.Lock()
 			oldY, oldX := g.GameBall.Y, g.GameBall.X
 
-			// Move ball
-			g.GameBoard.BoardLock.Lock()
+			// Save/restore space state
 			spaceState := g.SaveOldSpaceState(newY, newX)
 			g.GameBoard.Layout[newY][newX] = g.GameBoard.Layout[oldY][oldX]
 			g.GameBoard.Layout[oldY][oldX] = spaceState
@@ -88,27 +126,58 @@ func (g *Game) BallMovement(direction int) {
 	}()
 }
 
+func RandomlyChooseUpOrDown() int {
+	if rand.Intn(2) == 0 {
+		return Up
+	}
+	return Down
+
+}
+
 // the problem you must solve is that y must always be less than the height
 // and y must always be greater than 0
 // the equation for a line is y = Mx + B
 // based on current y it must not go outside that range at ending y
-func (g *Game) RandomLineGenerator() int {
+func (g *Game) RandomEndingYGenerator() int {
 	//a number negative for up and a number positive for down and the range
 	//must keep it within the boundaries
-	spacesAboveLeft := g.GameBall.Y - g.GameBoard.Height //the out come must not move up more than this
-	spacesBelowLeft := g.GameBoard.Height - g.GameBall.Y //the out come must not move below this
-	//those are the ys in the slope equation
-	//the returned number is how many spaces
-	var possibleEndPoints []int
-	// upDownDirector := rand.Intn(2)
+	h := g.GameBoard.Height
+	y := g.GameBall.Y
 
-	for endPoint := spacesAboveLeft; endPoint < spacesBelowLeft; endPoint++ {
-		possibleEndPoints = append(possibleEndPoints, endPoint)
+	if h <= 0 {
+		return 0
+	}
+	// Max steps available without crossing bounds
+	maxUp := y           // can move up at most 'y' steps to hit 0
+	maxDown := h - 1 - y // can move down at most 'h-1-y' steps to hit Height-1
+	if maxUp < 0 {
+		maxUp = 0
+	}
+	if maxDown < 0 {
+		maxDown = 0
 	}
 
-	b := rand.Intn(len(possibleEndPoints))
-
-	return b
+	// Now choose a direction that has room; fall back if one side is blocked
+	dir := RandomlyChooseUpOrDown()
+	if (dir == Up && maxUp == 0) && maxDown > 0 {
+		dir = Down
+	} else if (dir == Down && maxDown == 0) && maxUp > 0 {
+		dir = Up
+	}
+	// Produce a non-zero delta that stays in-bounds
+	switch dir {
+	case Up:
+		if maxUp == 0 {
+			return 0
+		}
+		// rand.Intn(n) yields [0, n), so +1 gives [1, n]
+		return -(rand.Intn(maxUp) + 1)
+	default: // Down
+		if maxDown == 0 {
+			return 0
+		}
+		return rand.Intn(maxDown) + 1
+	} //to get that endpoint you need to move up or down
 } //y = mx+b
 
 // func (g *Game) SpacesBelow() []int{}
@@ -174,13 +243,13 @@ func (g *Game) MovePlayer(input string) {
 	defer g.PlayerOne.PlayerLock.Unlock()
 	defer g.PlayerTwo.PlayerLock.Unlock()
 	switch input {
-	case "s":
+	case PlayerOneDownKey:
 		g.MovePlayerOneDown()
-	case "w":
+	case PlayerOneUpKey:
 		g.MovePlayerOneUp()
-	case "l":
+	case PlayerTwoDownKey:
 		g.MovePlayerTwoDown()
-	case "o":
+	case PlayerTwoUpKey:
 		g.MovePlayerTwoUp()
 	}
 }

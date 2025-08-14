@@ -16,6 +16,22 @@ func NewGame(d time.Duration, cmd *exec.Cmd) *Game {
 	}
 }
 
+// direction
+const (
+	Up    int = -1
+	Down  int = 1
+	Left  int = -1
+	Right int = 1
+)
+
+// player movement constants
+const (
+	PlayerOneUpKey   string = "w"
+	PlayerOneDownKey string = "s"
+	PlayerTwoUpKey   string = "o"
+	PlayerTwoDownKey string = "l"
+)
+
 // players may need to be in the board and not the game...
 type Game struct {
 	GameBoard    *Board
