@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
+import PingPong from "./../components/PingPong";
 
 const Homepage = () => {
+  const [playPingPong, setPlayPingPong] = useState(false);
   const projects = [
     {
       title: "CharliesPong",
@@ -10,6 +12,10 @@ const Homepage = () => {
     },
     // Add more projects here...
   ];
+
+  if (playPingPong) {
+    return <PingPong setOpen={setPlayPingPong} />;
+  }
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
@@ -32,11 +38,14 @@ const Homepage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <h3 className="font-bold">Languages</h3>
-                <p>Go, JavaScript/TypeScript, SQL, Bash</p>
+                <p>Go, JavaScript/TypeScript, SQL, Python, Bash</p>
               </div>
               <div>
                 <h3 className="font-bold">Tools</h3>
-                <p>Docker, Kubernetes, Helm, PostgreSQL, GitHub Actions</p>
+                <p>
+                  Docker, Kubernetes, Helm, PostgreSQL, GitHub Actions, AWS,
+                  Azure, Terraform
+                </p>
               </div>
             </div>
             <div className="card-actions justify-end mt-4">
@@ -50,14 +59,23 @@ const Homepage = () => {
             </div>
           </div>
         </div>
-        {/* Portfolio */}
+        {/* Games */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">Projects</h2>
-          <div className="grid gap-4 md:grid-cols-2">Play Pomg Here</div>
+          <h2 className="text-2xl font-bold mb-4">Play Ping Pong</h2>
+          <div className="flex justify-center">
+            <button
+              className="btn btn-primary hover:animate-pulse"
+              onClick={() => {
+                setPlayPingPong(true);
+              }}
+            >
+              Click Me to Play!!
+            </button>
+          </div>
         </div>
-        \{/* Footer */}
+        {/* Footer */}
         <footer className="mt-12 text-center text-sm text-gray-500">
-          Built with ❤️ using Vite, React, TailwindCSS & DaisyUI
+          Built with ❤️ enjoy!
         </footer>
       </div>
     </div>

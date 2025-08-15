@@ -37,6 +37,15 @@ func main() {
 	go tui.ReadSingleKey(inputChan)
 
 	//need a go routine which waits for key strokes in the background
+	// go func() {
+	// 	mux := http.NewServeMux()
+
+	// 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 		utils.WriteJSON(w, http.StatusOK, utils.JSONResponse{"message": "hello"})
+	// 	})
+
+	// 	http.ListenAndServe(":80", mux)
+	// }()
 
 	for {
 		select {
