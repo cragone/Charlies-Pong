@@ -197,7 +197,7 @@ func (g *Game) ScreenWriter() {
 func (g *Game) VolleyStart() {
 	g.SetPlayerStart()
 	g.SetPingPongBall()
-	g.BallMovement(1)
+	g.BallMovement(Right)
 	g.BallStopChan = make(chan struct{})
 	g.StopOnce = sync.Once{}
 
