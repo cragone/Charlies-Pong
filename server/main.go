@@ -13,7 +13,7 @@ func main() {
 	//Load into game
 	tui.GameIntro()
 
-	pingPong := graphics.NewGame(20*time.Second, cmd)
+	pingPong := graphics.NewGame(60*time.Second, cmd)
 
 	//Declare the game
 
