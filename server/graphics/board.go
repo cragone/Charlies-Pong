@@ -219,8 +219,8 @@ func (g *Game) SetPlayerStart() {
 	g.PlayerTwo.X = g.GameBoard.Width - 2
 	g.PlayerTwo.Y = g.GameBoard.Height / 2
 	//place the players onto the Board
-	g.GameBoard.Layout[g.PlayerOne.Y][g.PlayerOne.X] = "X"
-	g.GameBoard.Layout[g.PlayerTwo.Y][g.PlayerTwo.X] = "X"
+	g.GameBoard.Layout[g.PlayerOne.Y][g.PlayerOne.X] = PlayerSymbol
+	g.GameBoard.Layout[g.PlayerTwo.Y][g.PlayerTwo.X] = PlayerSymbol
 	//return the players
 
 }
@@ -228,11 +228,11 @@ func (g *Game) SetPlayerStart() {
 // starting the ball next to player one maybe later we can change the logic to go to loser side
 func (g *Game) SetPingPongBall() {
 	gameBall := Ball{
-		X: g.PlayerOne.X + 1, // place the ball next to player one
+		X: g.PlayerOne.X + Right, // place the ball next to player one
 		Y: g.PlayerOne.Y,
 	}
-	g.GameBall = &gameBall                               // create a ball for the game
-	g.GameBoard.Layout[g.GameBall.Y][g.GameBall.X] = "0" //place the ball on the board
+	g.GameBall = &gameBall                                      // create a ball for the game
+	g.GameBoard.Layout[g.GameBall.Y][g.GameBall.X] = BallSymbol //place the ball on the board
 }
 
 // Move player logic
@@ -257,11 +257,11 @@ func (g *Game) MovePlayer(input string) {
 func (g *Game) MovePlayerOneUp() {
 	if g.PlayerOne.Y > 1 { //move player one up if not at the height
 		oldY := g.PlayerOne.Y
-		newY := g.PlayerOne.Y - 1
+		newY := g.PlayerOne.Y + Up
 
 		g.GameBoard.BoardLock.Lock()
 		g.GameBoard.Layout[newY][g.PlayerOne.X] = g.GameBoard.Layout[oldY][g.PlayerOne.X]
-		g.GameBoard.Layout[oldY][g.PlayerOne.X] = " "
+		g.GameBoard.Layout[oldY][g.PlayerOne.X] = EmptySpace
 		g.GameBoard.BoardLock.Unlock()
 
 		// update the player position
@@ -273,13 +273,13 @@ func (g *Game) MovePlayerOneUp() {
 func (g *Game) MovePlayerOneDown() {
 	if g.PlayerOne.Y < g.GameBoard.Height-2 { //move player one down if not at border
 		oldY := g.PlayerOne.Y
-		newY := g.PlayerOne.Y + 1
+		newY := g.PlayerOne.Y + Down
 
 		g.GameBoard.BoardLock.Lock()
 		// move player marker
 		g.GameBoard.Layout[newY][g.PlayerOne.X] = g.GameBoard.Layout[oldY][g.PlayerOne.X]
 		// clear old position
-		g.GameBoard.Layout[oldY][g.PlayerOne.X] = " "
+		g.GameBoard.Layout[oldY][g.PlayerOne.X] = EmptySpace
 		g.GameBoard.BoardLock.Unlock()
 
 		// update player position
@@ -290,13 +290,13 @@ func (g *Game) MovePlayerOneDown() {
 func (g *Game) MovePlayerTwoUp() {
 	if g.PlayerTwo.Y > 1 {
 		oldY := g.PlayerTwo.Y
-		newY := g.PlayerTwo.Y - 1
+		newY := g.PlayerTwo.Y + Up
 
 		g.GameBoard.BoardLock.Lock()
 		//move player marker
 		g.GameBoard.Layout[newY][g.PlayerTwo.X] = g.GameBoard.Layout[oldY][g.PlayerTwo.X]
 		//clear the old position
-		g.GameBoard.Layout[oldY][g.PlayerTwo.X] = " "
+		g.GameBoard.Layout[oldY][g.PlayerTwo.X] = EmptySpace
 		g.GameBoard.BoardLock.Unlock()
 
 		//update player position
@@ -307,13 +307,13 @@ func (g *Game) MovePlayerTwoUp() {
 func (g *Game) MovePlayerTwoDown() {
 	if g.PlayerTwo.Y < g.GameBoard.Height-2 { //move player two down if not at border
 		oldY := g.PlayerTwo.Y
-		newY := g.PlayerTwo.Y + 1
+		newY := g.PlayerTwo.Y + Down
 
 		g.GameBoard.BoardLock.Lock()
 		// move player marker
 		g.GameBoard.Layout[newY][g.PlayerTwo.X] = g.GameBoard.Layout[oldY][g.PlayerTwo.X]
 		// clear old position
-		g.GameBoard.Layout[oldY][g.PlayerTwo.X] = " "
+		g.GameBoard.Layout[oldY][g.PlayerTwo.X] = EmptySpace
 		g.GameBoard.BoardLock.Unlock()
 
 		// update player position
@@ -340,11 +340,11 @@ func (g *Game) CreateBoard(height, width int) {
 
 		for x := 0; x < width; x++ {
 			if x == 0 || x == width-1 {
-				g.GameBoard.Layout[y][x] = "|"
+				g.GameBoard.Layout[y][x] = VerticalBorder
 			} else if y == 0 || y == height-1 {
-				g.GameBoard.Layout[y][x] = "-"
+				g.GameBoard.Layout[y][x] = HorizontalBorder
 			} else {
-				g.GameBoard.Layout[y][x] = " "
+				g.GameBoard.Layout[y][x] = EmptySpace
 			}
 		}
 	}

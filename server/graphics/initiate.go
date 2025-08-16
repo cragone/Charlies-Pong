@@ -16,7 +16,7 @@ func NewGame(d time.Duration, cmd *exec.Cmd) *Game {
 	}
 }
 
-// direction
+// directions
 const (
 	Up    int = -1
 	Down  int = 1
@@ -30,6 +30,15 @@ const (
 	PlayerOneDownKey string = "s"
 	PlayerTwoUpKey   string = "o"
 	PlayerTwoDownKey string = "l"
+)
+
+// animations
+const (
+	EmptySpace       = " "
+	PlayerSymbol     = "X"
+	BallSymbol       = "O"
+	HorizontalBorder = "-"
+	VerticalBorder   = "|"
 )
 
 // players may need to be in the board and not the game...
