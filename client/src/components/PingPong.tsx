@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from "react";
 
-const PingPong = ({ setOpen }) => {
+// interface for props
+interface PingPongProps {
+  setOpen: (value: boolean) => void;
+}
+
+const PingPong: React.FC<PingPongProps> = ({ setOpen }) => {
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.ctrlKey && event.key.toLowerCase() === "c") {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing =
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable);
+
+      if (!typing && e.ctrlKey && e.key.toLowerCase() === "c") {
         setOpen(false);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setOpen]);
 
   return (

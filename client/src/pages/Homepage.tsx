@@ -3,15 +3,6 @@ import PingPong from "./../components/PingPong";
 
 const Homepage = () => {
   const [playPingPong, setPlayPingPong] = useState(false);
-  const projects = [
-    {
-      title: "CharliesPong",
-      description:
-        "Terminal-based Ping Pong game in Go using goroutines and real-time input handling.",
-      link: "https://github.com/cragone/charliespong",
-    },
-    // Add more projects here...
-  ];
 
   if (playPingPong) {
     return <PingPong setOpen={setPlayPingPong} />;

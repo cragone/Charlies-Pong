@@ -2,8 +2,11 @@ package main
 
 import (
 	"game/graphics"
+	"game/handlers"
 	"game/tui"
+	"game/utils"
 	"log"
+	"net/http"
 	"os/exec"
 	"time"
 )
@@ -37,15 +40,17 @@ func main() {
 	go tui.ReadSingleKey(inputChan)
 
 	//need a go routine which waits for key strokes in the background
-	// go func() {
-	// 	mux := http.NewServeMux()
+	go func() {
+		mux := http.NewServeMux()
 
-	// 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 		utils.WriteJSON(w, http.StatusOK, utils.JSONResponse{"message": "hello"})
-	// 	})
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			utils.WriteJSON(w, http.StatusOK, utils.JSONResponse{"message": "hello"})
+		})
 
-	// 	http.ListenAndServe(":80", mux)
-	// }()
+		mux.HandleFunc("/count_down", handlers.HandleSendGameStartUpWS)
+
+		http.ListenAndServe(":80", mux)
+	}()
 
 	for {
 		select {
